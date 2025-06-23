@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+package apollo.perception.localization;
+
+message FusionLocalizationConfig {
+  optional string primary_localization_channel = 1 [default = "/apollo/localization/pose"];
+  optional string secondary_localization_channel = 2 [default = "/apollo/localization/rtk"];
+  optional string output_localization_channel = 3 [default = "/apollo/perception/fused_localization"];
+  optional string status_channel = 4 [default = "/apollo/perception/fused_localization_status"];
+  optional double safety_threshold = 5 [default = 2.0];
+}

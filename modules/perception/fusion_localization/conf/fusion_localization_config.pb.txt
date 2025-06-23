@@ -1,0 +1,5 @@
+primary_localization_channel: "/apollo/localization/pose"
+secondary_localization_channel: "/apollo/localization/rtk"
+output_localization_channel: "/apollo/perception/fused_localization"
+status_channel: "/apollo/perception/fused_localization_status"
+safety_threshold: 2.0
