@@ -43,6 +43,14 @@ scenario {
     type: "ParkAndGoScenario"
 }
 scenario {
+    name: "LARGE_CURVATURE"
+    type: "LargeCurvatureScenario"
+}
+scenario {
+    name: "PATH_FOLLOW"
+    type: "PathFollowScenario"
+}
+scenario {
     name: "LANE_FOLLOW"
     type: "LaneFollowScenario"
 }

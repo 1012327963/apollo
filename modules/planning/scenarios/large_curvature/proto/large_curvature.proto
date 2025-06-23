@@ -1,0 +1,8 @@
+syntax = "proto2";
+
+package apollo.planning;
+
+message ScenarioLargeCurvatureConfig {
+  // curvature threshold to trigger large curvature scenario
+  optional double curvature_threshold = 1 [default = 0.3];
+}
