@@ -1,0 +1,9 @@
+syntax = "proto2";
+
+package apollo.planning;
+
+message EdgeFollowPathConfig {
+  optional double forward_length = 1 [default = 80.0];
+  optional double path_resolution = 2 [default = 1.0];
+  optional double edge_buffer = 3 [default = 0.3];
+}

@@ -46,3 +46,7 @@ scenario {
     name: "LANE_FOLLOW"
     type: "LaneFollowScenario"
 }
+scenario {
+    name: "EDGE_FOLLOW"
+    type: "EdgeFollowScenario"
+}
