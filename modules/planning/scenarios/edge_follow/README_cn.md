@@ -13,11 +13,16 @@
 
 2. 调整参考线与终点虚拟墙配置，使其更适合贴边任务。
 
-3. 在 `planning_config.pb.txt` 中指定 `EdgeFollowMap`：
+3. 在 `public_road_planner_config.pb.txt` 中将 `EDGE_FOLLOW` 场景放在 `LANE_FOLLOW` 之前，以便优先进入贴边场景：
 
-   ```
-   reference_line_config {
-     pnc_map_class: "apollo::planning::EdgeFollowMap"
+   ```protobuf
+   scenario {
+       name: "EDGE_FOLLOW"
+       type: "EdgeFollowScenario"
+   }
+   scenario {
+       name: "LANE_FOLLOW"
+       type: "LaneFollowScenario"
    }
    ```
 
