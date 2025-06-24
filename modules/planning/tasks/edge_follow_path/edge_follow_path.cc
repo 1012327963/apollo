@@ -41,6 +41,9 @@ Status EdgeFollowPath::Process(Frame* frame,
   std::vector<common::PathPoint> path_points;
   const auto& reference_line = reference_line_info->reference_line();
   double start_s = reference_line_info->AdcSlBoundary().start_s();
+  double adc_center_l = 0.5 * (reference_line_info->AdcSlBoundary().start_l() +
+                              reference_line_info->AdcSlBoundary().end_l());
+  double shift_end_s = start_s + config_.initial_shift_length();
   double end_s = start_s + config_.forward_length();
 
   const Obstacle* target_obstacle = nullptr;
@@ -85,7 +88,14 @@ Status EdgeFollowPath::Process(Frame* frame,
     reference_line.GetOffsetToMap(s, &offset_to_center);
     double right_bound = -right_width - offset_to_center;
     double lane_center_l = -offset_to_center;
-    double l = right_bound + config_.edge_buffer();
+    double target_edge_l = right_bound + config_.edge_buffer();
+    double l = target_edge_l;
+
+    if (s <= shift_end_s) {
+      double ratio = std::clamp((s - start_s) / config_.initial_shift_length(),
+                                0.0, 1.0);
+      l = (1.0 - ratio) * adc_center_l + ratio * target_edge_l;
+    }
 
     if (target_obstacle) {
       double return_end_s = avoid_end_s + 10.0;
@@ -98,7 +108,7 @@ Status EdgeFollowPath::Process(Frame* frame,
         } else {
           ratio = std::clamp(1.0 - (s - avoid_end_s) / 10.0, 0.0, 1.0);
         }
-        l = ratio * lane_center_l + (1.0 - ratio) * (right_bound + config_.edge_buffer());
+        l = ratio * lane_center_l + (1.0 - ratio) * target_edge_l;
       }
     }
 

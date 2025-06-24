@@ -1,3 +1,4 @@
 forward_length: 80.0
 path_resolution: 1.0
 edge_buffer: 0.3
+initial_shift_length: 5.0
