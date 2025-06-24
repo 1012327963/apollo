@@ -1,0 +1,3 @@
+<library path="modules/planning/tasks/edge_follow_path/libedge_follow_path.so">
+    <class type="apollo::planning::EdgeFollowPath" base_class="apollo::planning::Task"></class>
+</library>
