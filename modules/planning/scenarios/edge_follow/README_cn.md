@@ -33,6 +33,9 @@
 
    ```bash
    mainboard -d modules/external_command/external_command_demo/dag/external_command_demo_wrapper.dag
-   edge_start    # 开启贴边
-   edge_stop     # 退出贴边
-   ```
+edge_start    # 开启贴边
+edge_stop     # 退出贴边
+```
+
+5. 修改 `planning_config.pb.txt`，将 `pnc_map_class` 设置为 `apollo::planning::EdgeFollowMap`，
+   使规划参考线使用贴边地图。

@@ -45,6 +45,8 @@ Status EdgeFollowPath::Process(Frame* frame,
                               reference_line_info->AdcSlBoundary().end_l());
   double shift_end_s = start_s + config_.initial_shift_length();
   double end_s = start_s + config_.forward_length();
+  end_s = std::min(end_s, reference_line.Length());
+  shift_end_s = std::min(shift_end_s, end_s);
 
   const Obstacle* target_obstacle = nullptr;
   double avoid_start_s = 0.0;
@@ -78,7 +80,9 @@ Status EdgeFollowPath::Process(Frame* frame,
       }
     }
   }
-  for (double s = start_s; s <= end_s; s += config_.path_resolution()) {
+  const double resolution =
+      config_.path_resolution() > 0.0 ? config_.path_resolution() : 1.0;
+  for (double s = start_s; s <= end_s; s += resolution) {
     double left_width = 0.0;
     double right_width = 0.0;
     if (!reference_line.GetLaneWidth(s, &left_width, &right_width)) {

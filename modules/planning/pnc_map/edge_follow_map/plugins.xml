@@ -1,0 +1,3 @@
+<library path="modules/planning/pnc_map/edge_follow_map/libedge_follow_map.so">
+    <class type="apollo::planning::EdgeFollowMap" base_class="apollo::planning::PncMapBase"></class>
+</library>

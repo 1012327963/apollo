@@ -25,9 +25,6 @@ namespace planning {
 
 bool EdgeFollowScenario::IsTransferable(const Scenario* other_scenario,
                                         const Frame& frame) {
-  if (!frame.local_view().planning_command->has_lane_follow_command()) {
-    return false;
-  }
   if (frame.reference_line_info().empty()) {
     return false;
   }
