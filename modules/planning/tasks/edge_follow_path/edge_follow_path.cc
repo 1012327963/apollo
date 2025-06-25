@@ -33,11 +33,21 @@ bool EdgeFollowPath::Init(const std::string& config_dir, const std::string& name
   if (!Task::Init(config_dir, name, injector)) {
     return false;
   }
-  return Task::LoadConfig<EdgeFollowPathConfig>(&config_);
+  if (!Task::LoadConfig<EdgeFollowPathConfig>(&config_)) {
+    return false;
+  }
+  lane_follow_path_ = std::make_unique<LaneFollowPath>();
+  if (!lane_follow_path_->Init(config_dir, name + "_lf", injector)) {
+    AWARN << "Failed to init internal LaneFollowPath";
+  }
+  return true;
 }
 
 Status EdgeFollowPath::Process(Frame* frame,
                                ReferenceLineInfo* reference_line_info) {
+  if (lane_follow_path_) {
+    lane_follow_path_->Execute(frame, reference_line_info);
+  }
   std::vector<common::PathPoint> path_points;
   const auto& reference_line = reference_line_info->reference_line();
   double start_s = reference_line_info->AdcSlBoundary().start_s();

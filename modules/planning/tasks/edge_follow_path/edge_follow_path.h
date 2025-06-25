@@ -23,6 +23,7 @@
 #include "cyber/plugin_manager/plugin_manager.h"
 #include "modules/planning/planning_interface_base/task_base/common/path_generation.h"
 #include "modules/planning/tasks/edge_follow_path/proto/edge_follow_path.pb.h"
+#include "modules/planning/tasks/lane_follow_path/lane_follow_path.h"
 
 namespace apollo {
 namespace planning {
@@ -36,6 +37,7 @@ class EdgeFollowPath : public PathGeneration {
   apollo::common::Status Process(Frame* frame,
                                  ReferenceLineInfo* reference_line_info) override;
 
+  std::unique_ptr<LaneFollowPath> lane_follow_path_;
   EdgeFollowPathConfig config_;
 };
 

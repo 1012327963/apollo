@@ -21,6 +21,7 @@ apollo_plugin(
         "//modules/map:apollo_map",
         "//modules/planning/planning_interface_base:apollo_planning_planning_interface_base",
         "//modules/planning/tasks/edge_follow_path/proto:edge_follow_path_cc_proto",
+        "//modules/planning/tasks/lane_follow_path:liblane_follow_path.so",
     ],
 )
 
