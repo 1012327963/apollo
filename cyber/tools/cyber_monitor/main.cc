@@ -24,15 +24,11 @@
 #include "cyber/tools/cyber_monitor/general_channel_message.h"
 #include "cyber/tools/cyber_monitor/screen.h"
 
-#include <chrono>
-#include <thread>
 
-#include <atomic>
 
 namespace {
-std::atomic<bool> running(true);
 void SigResizeHandle(int) { Screen::Instance()->Resize(); }
-void SigCtrlHandle(int) { Screen::Instance()->Stop(); running = false; }
+void SigCtrlHandle(int) { Screen::Instance()->Stop(); }
 
 void printHelp(const char *cmd_name) {
   std::cout << "Usage:\n"
@@ -144,23 +140,12 @@ int main(int argc, char *argv[]) {
   signal(SIGINT, SigCtrlHandle);
   signal(SIGTSTP, SigCtrlHandle);
 
-  if (freq_only) {
-    while (running) {
-      const auto &channels = topology_msg.Channels();
-      for (const auto &item : channels) {
-        if (!GeneralChannelMessage::IsErrorCode(item.second)) {
-          std::cout << item.first << ": "
-                    << item.second->frame_ratio() << std::endl;
-        }
-      }
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-  } else {
-    s->SetCurrentRenderMessage(&topology_msg);
+  CyberTopologyMessage::hz_mode = freq_only;
 
-    s->Init();
-    s->Run();
-  }
+  s->SetCurrentRenderMessage(&topology_msg);
+
+  s->Init();
+  s->Run();
 
   return 0;
 }
