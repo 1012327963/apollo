@@ -16,6 +16,10 @@
 
 #include <csignal>
 #include <iostream>
+#include <unistd.h>
+#include <atomic>
+#include <chrono>
+#include <thread>
 
 #include "cyber/init.h"
 #include "cyber/service_discovery/topology_manager.h"
@@ -27,8 +31,12 @@
 
 
 namespace {
+std::atomic<bool> g_exit(false);
 void SigResizeHandle(int) { Screen::Instance()->Resize(); }
-void SigCtrlHandle(int) { Screen::Instance()->Stop(); }
+void SigCtrlHandle(int) {
+  g_exit = true;
+  Screen::Instance()->Stop();
+}
 
 void printHelp(const char *cmd_name) {
   std::cout << "Usage:\n"
@@ -134,18 +142,24 @@ int main(int argc, char *argv[]) {
     topology_msg.AddReaderWriter(role, false);
   }
 
-  Screen *s = Screen::Instance();
+  bool interactive = isatty(STDIN_FILENO) && isatty(STDOUT_FILENO);
 
-  signal(SIGWINCH, SigResizeHandle);
   signal(SIGINT, SigCtrlHandle);
   signal(SIGTSTP, SigCtrlHandle);
 
-  CyberTopologyMessage::hz_mode = freq_only;
+  CyberTopologyMessage::hz_mode = freq_only || !interactive;
 
-  s->SetCurrentRenderMessage(&topology_msg);
-
-  s->Init();
-  s->Run();
+  if (interactive) {
+    Screen *s = Screen::Instance();
+    signal(SIGWINCH, SigResizeHandle);
+    s->SetCurrentRenderMessage(&topology_msg);
+    s->Init();
+    s->Run();
+  } else {
+    while (!g_exit.load()) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+  }
 
   return 0;
 }

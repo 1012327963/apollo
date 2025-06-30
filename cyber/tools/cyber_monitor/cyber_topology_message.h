@@ -66,6 +66,9 @@ class CyberTopologyMessage : public RenderableMessage {
 
  public:
   static bool hz_mode;
+  const std::map<std::string, GeneralChannelMessage*>& Channels() const {
+    return all_channels_map_;
+  }
 };
 
 #endif  // TOOLS_CVT_MONITOR_CYBER_TOPOLOGY_MESSAGE_H_
