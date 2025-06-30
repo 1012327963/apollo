@@ -63,6 +63,11 @@ class CyberTopologyMessage : public RenderableMessage {
   int col1_width_;
   const std::string& specified_channel_;
   std::map<std::string, GeneralChannelMessage*> all_channels_map_;
+
+ public:
+  const std::map<std::string, GeneralChannelMessage*>& Channels() const {
+    return all_channels_map_;
+  }
 };
 
 #endif  // TOOLS_CVT_MONITOR_CYBER_TOPOLOGY_MESSAGE_H_
