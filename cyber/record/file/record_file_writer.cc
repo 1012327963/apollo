@@ -66,14 +66,9 @@ bool RecordFileWriter::Open(const std::string& path) {
 void RecordFileWriter::Close() {
   if (is_writing_) {
     // wait for the flush operation that may exist now
-    while (1) {
-      {
-        std::unique_lock<std::mutex> flush_lock(flush_mutex_);
-        if (chunk_flush_->empty()) {
-          break;
-        }
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    {
+      std::unique_lock<std::mutex> flush_lock(flush_mutex_);
+      flush_cv_.wait(flush_lock, [this] { return chunk_flush_->empty(); });
     }
 
     // last swap
@@ -84,14 +79,9 @@ void RecordFileWriter::Close() {
     }
 
     // wait for the last flush operation
-    while (1) {
-      {
-        std::unique_lock<std::mutex> flush_lock(flush_mutex_);
-        if (chunk_flush_->empty()) {
-          break;
-        }
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    {
+      std::unique_lock<std::mutex> flush_lock(flush_mutex_);
+      flush_cv_.wait(flush_lock, [this] { return chunk_flush_->empty(); });
     }
 
     is_writing_ = false;
@@ -254,6 +244,7 @@ void RecordFileWriter::Flush() {
     }
     in_writing_ = false;
     chunk_flush_->clear();
+    flush_cv_.notify_all();
   }
 }
 
