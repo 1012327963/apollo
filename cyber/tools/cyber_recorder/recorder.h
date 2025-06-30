@@ -17,6 +17,7 @@
 #ifndef CYBER_TOOLS_CYBER_RECORDER_RECORDER_H_
 #define CYBER_TOOLS_CYBER_RECORDER_RECORDER_H_
 
+#include <condition_variable>
 #include <memory>
 #include <mutex>
 #include <regex>
@@ -65,6 +66,8 @@ class Recorder : public std::enable_shared_from_this<Recorder> {
   std::shared_ptr<Node> node_ = nullptr;
   std::shared_ptr<RecordWriter> writer_ = nullptr;
   std::shared_ptr<std::thread> display_thread_ = nullptr;
+  std::mutex progress_mutex_;
+  std::condition_variable progress_cv_;
   Connection<const ChangeMsg&> change_conn_;
   std::string output_;
   bool all_channels_ = true;

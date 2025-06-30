@@ -24,7 +24,7 @@ namespace apollo {
 namespace cyber {
 namespace record {
 
-const uint64_t Player::kSleepIntervalMiliSec = 100;
+const uint64_t Player::kSleepIntervalMiliSec = 200;
 
 Player::Player(const PlayParam& play_param, const NodePtr& node,
                const bool preload_fill_buffer_mode)
