@@ -26,7 +26,10 @@
 
 namespace {
 void SigResizeHandle(int) { Screen::Instance()->Resize(); }
-void SigCtrlCHandle(int) { Screen::Instance()->Stop(); }
+void SigCtrlCHandle(int sig) {
+  Screen::Instance()->Stop();
+  apollo::cyber::OnShutdown(sig);
+}
 
 void printHelp(const char *cmd_name) {
   std::cout << "Usage:\n"
