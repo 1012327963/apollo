@@ -16,6 +16,10 @@
 
 #include <csignal>
 #include <iostream>
+#include <unistd.h>
+#include <atomic>
+#include <chrono>
+#include <thread>
 
 #include "cyber/init.h"
 #include "cyber/service_discovery/topology_manager.h"
@@ -24,32 +28,42 @@
 #include "cyber/tools/cyber_monitor/general_channel_message.h"
 #include "cyber/tools/cyber_monitor/screen.h"
 
+
+
 namespace {
+std::atomic<bool> g_exit(false);
 void SigResizeHandle(int) { Screen::Instance()->Resize(); }
-void SigCtrlCHandle(int) { Screen::Instance()->Stop(); }
+void SigCtrlHandle(int) {
+  g_exit = true;
+  Screen::Instance()->Stop();
+}
 
 void printHelp(const char *cmd_name) {
   std::cout << "Usage:\n"
             << cmd_name << "  [option]\nOption:\n"
             << "   -h print help info\n"
             << "   -c specify one channel\n"
+            << "   -hz show topic frequency only\n"
             << "Interactive Command:\n"
             << Screen::InteractiveCmdStr << std::endl;
 }
 
 enum COMMAND {
   TOO_MANY_PARAMETER,
-  HELP,       // 2
-  NO_OPTION,  // 1
-  CHANNEL     // 3 -> 4
+  HELP,
+  NO_OPTION,
+  CHANNEL
 };
 
-COMMAND ParseOption(int argc, char *const argv[], std::string *command_val) {
-  if (argc > 4) {
+COMMAND ParseOption(int argc, char *const argv[], std::string *command_val,
+                    bool *freq_only) {
+  *freq_only = false;
+  bool has_channel = false;
+  if (argc > 5) {
     return TOO_MANY_PARAMETER;
   }
   int index = 1;
-  while (true) {
+  while (index < argc) {
     const char *opt = argv[index];
     if (opt == nullptr) {
       break;
@@ -57,16 +71,22 @@ COMMAND ParseOption(int argc, char *const argv[], std::string *command_val) {
     if (strcmp(opt, "-h") == 0) {
       return HELP;
     }
-    if (strcmp(opt, "-c") == 0) {
+    if (strcmp(opt, "-f") == 0 || strcmp(opt, "-hz") == 0) {
+      *freq_only = true;
+    } else if (strcmp(opt, "-c") == 0) {
       if (argv[index + 1]) {
         *command_val = argv[index + 1];
-        return CHANNEL;
+        has_channel = true;
+        ++index;  // skip value
       }
     }
 
     ++index;
   }
 
+  if (has_channel) {
+    return CHANNEL;
+  }
   return NO_OPTION;
 }
 
@@ -74,8 +94,9 @@ COMMAND ParseOption(int argc, char *const argv[], std::string *command_val) {
 
 int main(int argc, char *argv[]) {
   std::string val;
+  bool freq_only = false;
 
-  COMMAND com = ParseOption(argc, argv, &val);
+  COMMAND com = ParseOption(argc, argv, &val, &freq_only);
 
   switch (com) {
     case TOO_MANY_PARAMETER:
@@ -121,15 +142,24 @@ int main(int argc, char *argv[]) {
     topology_msg.AddReaderWriter(role, false);
   }
 
-  Screen *s = Screen::Instance();
+  bool interactive = isatty(STDIN_FILENO) && isatty(STDOUT_FILENO);
 
-  signal(SIGWINCH, SigResizeHandle);
-  signal(SIGINT, SigCtrlCHandle);
+  signal(SIGINT, SigCtrlHandle);
+  signal(SIGTSTP, SigCtrlHandle);
 
-  s->SetCurrentRenderMessage(&topology_msg);
+  CyberTopologyMessage::hz_mode = freq_only || !interactive;
 
-  s->Init();
-  s->Run();
+  if (interactive) {
+    Screen *s = Screen::Instance();
+    signal(SIGWINCH, SigResizeHandle);
+    s->SetCurrentRenderMessage(&topology_msg);
+    s->Init();
+    s->Run();
+  } else {
+    while (!g_exit.load()) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+  }
 
   return 0;
 }

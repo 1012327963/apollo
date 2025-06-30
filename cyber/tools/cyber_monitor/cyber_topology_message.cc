@@ -28,6 +28,8 @@
 
 constexpr int SecondColumnOffset = 4;
 
+bool CyberTopologyMessage::hz_mode = false;
+
 CyberTopologyMessage::CyberTopologyMessage(const std::string& channel)
     : RenderableMessage(nullptr, 1),
       second_column_(SecondColumnType::MessageFrameRatio),
@@ -55,6 +57,9 @@ bool CyberTopologyMessage::IsFromHere(const std::string& node_name) {
 }
 
 RenderableMessage* CyberTopologyMessage::Child(int line_no) const {
+  if (hz_mode) {
+    return nullptr;
+  }
   RenderableMessage* ret = nullptr;
   auto iter = FindChild(line_no);
   if (iter != all_channels_map_.cend() &&
@@ -174,6 +179,9 @@ void CyberTopologyMessage::AddReaderWriter(
 }
 
 void CyberTopologyMessage::ChangeState(const Screen* s, int key) {
+  if (hz_mode) {
+    return;
+  }
   switch (key) {
     case 'f':
     case 'F':
