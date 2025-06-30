@@ -17,6 +17,7 @@
 #ifndef CYBER_TOOLS_CYBER_RECORDER_RECORDER_H_
 #define CYBER_TOOLS_CYBER_RECORDER_RECORDER_H_
 
+#include <atomic>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -78,7 +79,7 @@ class Recorder : public std::enable_shared_from_this<Recorder> {
   proto::Header header_;
   std::unordered_map<std::string, std::shared_ptr<ReaderBase>>
       channel_reader_map_;
-  uint64_t message_count_;
+  std::atomic<uint64_t> message_count_{0};
   uint64_t message_time_;
 
   bool InitReadersImpl();

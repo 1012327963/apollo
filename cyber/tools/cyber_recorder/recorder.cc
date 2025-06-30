@@ -278,10 +278,7 @@ void Recorder::ReaderCallback(const std::shared_ptr<RawMessage>& message,
     return;
   }
 
-  {
-    std::lock_guard<std::mutex> lk(progress_mutex_);
-    message_count_++;
-  }
+  message_count_.fetch_add(1, std::memory_order_relaxed);
   progress_cv_.notify_one();
 }
 
@@ -292,20 +289,21 @@ void Recorder::ShowProgress() {
     std::unique_lock<std::mutex> lk(progress_mutex_);
     progress_cv_.wait_for(
         lk, std::chrono::seconds(1), [this, &last_count, &last_print] {
-          return message_count_ != last_count ||
+          return message_count_.load(std::memory_order_relaxed) != last_count ||
                  std::chrono::steady_clock::now() - last_print >=
                      std::chrono::seconds(1) ||
                  is_stopping_;
         });
     auto now = std::chrono::steady_clock::now();
-    if (message_count_ != last_count ||
+    auto current_count = message_count_.load(std::memory_order_relaxed);
+    if (current_count != last_count ||
         now - last_print >= std::chrono::seconds(1)) {
       std::cout << "\r[RUNNING]  Record Time: " << std::setprecision(3)
                 << message_time_ / 1000000000
                 << "    Progress: " << channel_reader_map_.size()
-                << " channels, " << message_count_ << " messages";
+                << " channels, " << current_count << " messages";
       std::cout.flush();
-      last_count = message_count_;
+      last_count = current_count;
       last_print = now;
     }
   }
