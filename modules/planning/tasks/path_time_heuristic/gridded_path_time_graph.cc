@@ -36,6 +36,11 @@
 namespace apollo {
 namespace planning {
 
+namespace {
+constexpr uint32_t kMaxGraphDimensionT = 2000;
+constexpr uint32_t kMaxGraphDimensionS = 1000;
+}  // namespace
+
 using apollo::common::ErrorCode;
 using apollo::common::SpeedPoint;
 using apollo::common::Status;
@@ -163,6 +168,7 @@ Status GriddedPathTimeGraph::InitCostTable() {
   dimension_t_ = static_cast<uint32_t>(std::ceil(
                      total_length_t_ / static_cast<double>(unit_t_))) +
                  1;
+  dimension_t_ = std::min(dimension_t_, kMaxGraphDimensionT);
 
   double sparse_length_s =
       total_length_s_ -
@@ -177,6 +183,11 @@ Status GriddedPathTimeGraph::InitCostTable() {
           : static_cast<uint32_t>(std::ceil(total_length_s_ / dense_unit_s_)) +
                 1;
   dimension_s_ = dense_dimension_s_ + sparse_dimension_s_;
+  if (dimension_s_ > kMaxGraphDimensionS) {
+    dimension_s_ = kMaxGraphDimensionS;
+    dense_dimension_s_ = std::min(dense_dimension_s_, dimension_s_);
+    sparse_dimension_s_ = dimension_s_ - dense_dimension_s_;
+  }
   PrintCurves debug;
   // Sanity Check
   if (dimension_t_ < 1 || dimension_s_ < 1) {
