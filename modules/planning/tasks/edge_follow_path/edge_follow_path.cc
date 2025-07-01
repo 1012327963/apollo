@@ -56,10 +56,9 @@ Status EdgeFollowPath::Process(Frame* frame,
   double start_s = reference_line_info->AdcSlBoundary().start_s();
   double adc_center_l = 0.5 * (reference_line_info->AdcSlBoundary().start_l() +
                               reference_line_info->AdcSlBoundary().end_l());
-  double shift_end_s = start_s + config_.initial_shift_length();
-  double end_s = start_s + config_.forward_length();
-  end_s = std::min(end_s, reference_line.Length());
-  shift_end_s = std::min(shift_end_s, end_s);
+  double end_s = reference_line.Length();
+  double shift_end_s =
+      std::min(start_s + config_.initial_shift_length(), end_s);
 
   const Obstacle* target_obstacle = nullptr;
   double avoid_start_s = 0.0;
