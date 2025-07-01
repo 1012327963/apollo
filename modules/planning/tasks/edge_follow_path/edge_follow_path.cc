@@ -18,6 +18,7 @@
 
 #include <algorithm>
 
+#include "cyber/plugin_manager/plugin_manager.h"
 #include "modules/common/util/point_factory.h"
 #include "modules/planning/planning_base/common/frame.h"
 #include "modules/planning/planning_base/common/reference_line_info.h"
@@ -36,6 +37,8 @@ bool EdgeFollowPath::Init(const std::string& config_dir, const std::string& name
   if (!Task::LoadConfig<EdgeFollowPathConfig>(&config_)) {
     return false;
   }
+  apollo::cyber::plugin_manager::PluginManager::Instance()->LoadLibrary(
+      "modules/planning/tasks/lane_follow_path/liblane_follow_path.so");
   lane_follow_path_ = std::make_unique<LaneFollowPath>();
   if (!lane_follow_path_->Init(config_dir, name + "_lf", injector)) {
     AWARN << "Failed to init internal LaneFollowPath";
