@@ -73,7 +73,7 @@ Status EdgeFollowPath::Process(Frame* frame,
       }
       double left_width = 0.0;
       double right_width = 0.0;
-      if (!reference_line.GetLaneWidth(sl.start_s(), &left_width, &right_width)) {
+      if (!reference_line.GetRoadWidth(sl.start_s(), &left_width, &right_width)) {
         continue;
       }
       double offset = 0.0;
@@ -95,7 +95,7 @@ Status EdgeFollowPath::Process(Frame* frame,
   for (double s = start_s; s <= end_s; s += resolution) {
     double left_width = 0.0;
     double right_width = 0.0;
-    if (!reference_line.GetLaneWidth(s, &left_width, &right_width)) {
+    if (!reference_line.GetRoadWidth(s, &left_width, &right_width)) {
       break;
     }
     double offset_to_center = 0.0;
