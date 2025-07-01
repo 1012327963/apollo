@@ -809,6 +809,11 @@ bool LaneBorrowPath::GetSecondNeighborLaneInfo(
   if (!second_ptr->GetProjection({ref_point.x(), ref_point.y()}, &proj_s, &proj_l)) {
     return false;
   }
+  static constexpr double kProjectionEpsilon = 0.5;
+  if (proj_s < -kProjectionEpsilon ||
+      proj_s > second_ptr->total_length() + kProjectionEpsilon) {
+    return false;
+  }
   *lane_width += second_ptr->GetWidth(proj_s);
   if (is_reverse) {
     *is_reverse = *is_reverse || reverse;

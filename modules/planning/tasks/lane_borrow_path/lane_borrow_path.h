@@ -121,6 +121,8 @@ class LaneBorrowPath : public PathGeneration {
    */
   void SetPathInfo(PathData* const path_data);
   bool HasThirdLane(const SidePassDirection pass_direction) const;
+  // Fetch width of the second neighbor lane if it exists at the given s.
+  // Returns false when the projection falls outside the lane length.
   bool GetSecondNeighborLaneInfo(const hdmap::Id& first_neighbor_lane_id,
                                  const SidePassDirection pass_direction,
                                  const double s, double* lane_width,
