@@ -76,15 +76,37 @@ apollo::common::Status LaneBorrowPath::Process(
   if (!OptimizePath(candidate_path_boundaries, &candidate_path_data)) {
     return Status::OK();
   }
-  if (AssessPath(&candidate_path_data,
-                 reference_line_info->mutable_path_data())) {
+  bool has_path = AssessPath(&candidate_path_data,
+                             reference_line_info->mutable_path_data());
+  if (!has_path) {
+    bool try_expand = false;
+    for (const auto& dir : decided_side_pass_direction_) {
+      if (HasThirdLane(dir)) {
+        try_expand = true;
+        break;
+      }
+    }
+    if (try_expand) {
+      candidate_path_boundaries.clear();
+      candidate_path_data.clear();
+      if (DecidePathBounds(&candidate_path_boundaries, true) &&
+          OptimizePath(candidate_path_boundaries, &candidate_path_data)) {
+        has_path = AssessPath(&candidate_path_data,
+                              reference_line_info->mutable_path_data());
+        if (has_path) {
+          ADEBUG << "lane borrow path success after expand third lane";
+        }
+      }
+    }
+  } else {
     ADEBUG << "lane borrow path success";
   }
 
   return Status::OK();
 }
 
-bool LaneBorrowPath::DecidePathBounds(std::vector<PathBoundary>* boundary) {
+bool LaneBorrowPath::DecidePathBounds(std::vector<PathBoundary>* boundary,
+                                      bool expand_to_third_lane) {
   for (size_t i = 0; i < decided_side_pass_direction_.size(); i++) {
     boundary->emplace_back();
     auto& path_bound = boundary->back();
@@ -101,7 +123,8 @@ bool LaneBorrowPath::DecidePathBounds(std::vector<PathBoundary>* boundary) {
     }
     // 2. Decide a rough boundary based on lane info and ADC's position
     if (!GetBoundaryFromNeighborLane(decided_side_pass_direction_[i],
-                                     &path_bound, &borrow_lane_type)) {
+                                     &path_bound, &borrow_lane_type,
+                                     expand_to_third_lane)) {
       AERROR << "Failed to decide a rough boundary based on lane and adc.";
       boundary->pop_back();
       continue;
@@ -239,7 +262,7 @@ bool LaneBorrowPath::AssessPath(std::vector<PathData>* candidate_path_data,
 
 bool LaneBorrowPath::GetBoundaryFromNeighborLane(
     const SidePassDirection pass_direction, PathBoundary* const path_bound,
-    std::string* borrow_lane_type) {
+    std::string* borrow_lane_type, bool expand_to_third_lane) {
   // Sanity checks.
   CHECK_NOTNULL(path_bound);
   ACHECK(!path_bound->empty());
@@ -276,6 +299,7 @@ bool LaneBorrowPath::GetBoundaryFromNeighborLane(
     double curr_neighbor_lane_width = 0.0;
     if (CheckLaneBoundaryType(*reference_line_info_, curr_s, pass_direction)) {
       hdmap::Id neighbor_lane_id;
+      bool has_neighbor = false;
       if (pass_direction == SidePassDirection::LEFT_BORROW) {
         // Borrowing left neighbor lane.
         if (reference_line_info_->GetNeighborLaneInfo(
@@ -283,12 +307,14 @@ bool LaneBorrowPath::GetBoundaryFromNeighborLane(
                 &neighbor_lane_id, &curr_neighbor_lane_width)) {
           ADEBUG << "Borrow left forward neighbor lane."
                  << neighbor_lane_id.id();
+          has_neighbor = true;
         } else if (reference_line_info_->GetNeighborLaneInfo(
                        ReferenceLineInfo::LaneType::LeftReverse, curr_s,
                        &neighbor_lane_id, &curr_neighbor_lane_width)) {
           borrowing_reverse_lane = true;
           ADEBUG << "Borrow left reverse neighbor lane."
                  << neighbor_lane_id.id();
+          has_neighbor = true;
         } else {
           ADEBUG << "There is no left neighbor lane.";
         }
@@ -299,15 +325,23 @@ bool LaneBorrowPath::GetBoundaryFromNeighborLane(
                 &neighbor_lane_id, &curr_neighbor_lane_width)) {
           ADEBUG << "Borrow right forward neighbor lane."
                  << neighbor_lane_id.id();
+          has_neighbor = true;
         } else if (reference_line_info_->GetNeighborLaneInfo(
                        ReferenceLineInfo::LaneType::RightReverse, curr_s,
                        &neighbor_lane_id, &curr_neighbor_lane_width)) {
           borrowing_reverse_lane = true;
           ADEBUG << "Borrow right reverse neighbor lane."
                  << neighbor_lane_id.id();
+          has_neighbor = true;
         } else {
           ADEBUG << "There is no right neighbor lane.";
         }
+      }
+      if (expand_to_third_lane && has_neighbor) {
+        bool is_reverse = false;
+        GetSecondNeighborLaneInfo(neighbor_lane_id, pass_direction, curr_s,
+                                  &curr_neighbor_lane_width, &is_reverse);
+        borrowing_reverse_lane = borrowing_reverse_lane || is_reverse;
       }
     }
     // 3. Calculate the proper boundary based on lane-width, ADC's position,
@@ -695,6 +729,89 @@ void LaneBorrowPath::SetPathInfo(PathData* const path_data) {
     }
   }
   path_data->SetPathPointDecisionGuide(std::move(path_decision));
+}
+
+bool LaneBorrowPath::HasThirdLane(const SidePassDirection pass_direction) const {
+  double check_s = reference_line_info_->AdcSlBoundary().end_s();
+  auto lane_info = reference_line_info_->LocateLaneInfo(check_s);
+  if (!lane_info) {
+    return false;
+  }
+  hdmap::Id first_lane_id;
+  if (pass_direction == SidePassDirection::LEFT_BORROW) {
+    if (lane_info->lane().left_neighbor_forward_lane_id_size() > 0) {
+      first_lane_id = lane_info->lane().left_neighbor_forward_lane_id(0);
+    } else if (lane_info->lane().left_neighbor_reverse_lane_id_size() > 0) {
+      first_lane_id = lane_info->lane().left_neighbor_reverse_lane_id(0);
+    } else {
+      return false;
+    }
+  } else {
+    if (lane_info->lane().right_neighbor_forward_lane_id_size() > 0) {
+      first_lane_id = lane_info->lane().right_neighbor_forward_lane_id(0);
+    } else if (lane_info->lane().right_neighbor_reverse_lane_id_size() > 0) {
+      first_lane_id = lane_info->lane().right_neighbor_reverse_lane_id(0);
+    } else {
+      return false;
+    }
+  }
+  auto first_lane_ptr = hdmap::HDMapUtil::BaseMapPtr()->GetLaneById(first_lane_id);
+  if (!first_lane_ptr) {
+    return false;
+  }
+  if (pass_direction == SidePassDirection::LEFT_BORROW) {
+    return first_lane_ptr->lane().left_neighbor_forward_lane_id_size() > 0 ||
+           first_lane_ptr->lane().left_neighbor_reverse_lane_id_size() > 0;
+  }
+  return first_lane_ptr->lane().right_neighbor_forward_lane_id_size() > 0 ||
+         first_lane_ptr->lane().right_neighbor_reverse_lane_id_size() > 0;
+}
+
+bool LaneBorrowPath::GetSecondNeighborLaneInfo(
+    const hdmap::Id& first_neighbor_lane_id,
+    const SidePassDirection pass_direction, const double s, double* lane_width,
+    bool* is_reverse) const {
+  auto hdmap = hdmap::HDMapUtil::BaseMapPtr();
+  auto first_ptr = hdmap->GetLaneById(first_neighbor_lane_id);
+  if (!first_ptr) {
+    return false;
+  }
+  hdmap::Id second_id;
+  bool reverse = false;
+  if (pass_direction == SidePassDirection::LEFT_BORROW) {
+    if (first_ptr->lane().left_neighbor_forward_lane_id_size() > 0) {
+      second_id = first_ptr->lane().left_neighbor_forward_lane_id(0);
+    } else if (first_ptr->lane().left_neighbor_reverse_lane_id_size() > 0) {
+      reverse = true;
+      second_id = first_ptr->lane().left_neighbor_reverse_lane_id(0);
+    } else {
+      return false;
+    }
+  } else {
+    if (first_ptr->lane().right_neighbor_forward_lane_id_size() > 0) {
+      second_id = first_ptr->lane().right_neighbor_forward_lane_id(0);
+    } else if (first_ptr->lane().right_neighbor_reverse_lane_id_size() > 0) {
+      reverse = true;
+      second_id = first_ptr->lane().right_neighbor_reverse_lane_id(0);
+    } else {
+      return false;
+    }
+  }
+  auto second_ptr = hdmap->GetLaneById(second_id);
+  if (!second_ptr) {
+    return false;
+  }
+  auto ref_point = reference_line_info_->reference_line().GetReferencePoint(s);
+  double proj_s = 0.0;
+  double proj_l = 0.0;
+  if (!second_ptr->GetProjection({ref_point.x(), ref_point.y()}, &proj_s, &proj_l)) {
+    return false;
+  }
+  *lane_width += second_ptr->GetWidth(proj_s);
+  if (is_reverse) {
+    *is_reverse = *is_reverse || reverse;
+  }
+  return true;
 }
 
 bool ComparePathData(const PathData& lhs, const PathData& rhs,

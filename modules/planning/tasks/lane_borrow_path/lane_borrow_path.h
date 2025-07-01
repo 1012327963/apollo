@@ -44,7 +44,8 @@ class LaneBorrowPath : public PathGeneration {
    * @brief Calculate all path boundaries
    * @param boundary is calculated path boundaries
    */
-  bool DecidePathBounds(std::vector<PathBoundary>* boundary);
+  bool DecidePathBounds(std::vector<PathBoundary>* boundary,
+                        bool expand_to_third_lane = false);
   /**
    * @brief Optimize paths for each path boundary
    * @param path_boundaries is input path boundaries
@@ -66,7 +67,8 @@ class LaneBorrowPath : public PathGeneration {
    */
   bool GetBoundaryFromNeighborLane(const SidePassDirection pass_direction,
                                    PathBoundary* const path_bound,
-                                   std::string* borrow_lane_type);
+                                   std::string* borrow_lane_type,
+                                   bool expand_to_third_lane = false);
   /**
    * @brief Determine whether to borrow neighbor lane
    * @return if need to borrow lane return true
@@ -116,6 +118,11 @@ class LaneBorrowPath : public PathGeneration {
    * @param lane_borrow_info is borrow side.
    */
   void SetPathInfo(PathData* const path_data);
+  bool HasThirdLane(const SidePassDirection pass_direction) const;
+  bool GetSecondNeighborLaneInfo(const hdmap::Id& first_neighbor_lane_id,
+                                 const SidePassDirection pass_direction,
+                                 const double s, double* lane_width,
+                                 bool* is_reverse) const;
   LaneBorrowPathConfig config_;
   std::vector<SidePassDirection> decided_side_pass_direction_;
   int use_self_lane_;
