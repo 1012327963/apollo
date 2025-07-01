@@ -25,14 +25,14 @@
 #include <vector>
 
 #include "modules/common/configs/vehicle_config_helper.h"
+#include "modules/map/hdmap/hdmap_common.h"
+#include "modules/map/hdmap/hdmap_util.h"
 #include "modules/planning/planning_base/common/obstacle_blocking_analyzer.h"
 #include "modules/planning/planning_base/common/planning_context.h"
 #include "modules/planning/planning_interface_base/task_base/common/path_generation.h"
 #include "modules/planning/planning_interface_base/task_base/common/path_util/path_assessment_decider_util.h"
 #include "modules/planning/planning_interface_base/task_base/common/path_util/path_bounds_decider_util.h"
 #include "modules/planning/planning_interface_base/task_base/common/path_util/path_optimizer_util.h"
-#include "modules/map/hdmap/hdmap_common.h"
-#include "modules/map/hdmap/hdmap_util.h"
 
 namespace apollo {
 namespace planning {
@@ -733,40 +733,38 @@ void LaneBorrowPath::SetPathInfo(PathData* const path_data) {
   path_data->SetPathPointDecisionGuide(std::move(path_decision));
 }
 
-bool LaneBorrowPath::HasThirdLane(const SidePassDirection pass_direction) const {
+bool LaneBorrowPath::HasThirdLane(
+    const SidePassDirection pass_direction) const {
+  // Check the neighboring lane on the desired borrow side first.
   double check_s = reference_line_info_->AdcSlBoundary().end_s();
-  auto lane_info = reference_line_info_->LocateLaneInfo(check_s);
-  if (!lane_info) {
-    return false;
-  }
   hdmap::Id first_lane_id;
+  double lane_width = 0.0;
+  bool has_first = false;
   if (pass_direction == SidePassDirection::LEFT_BORROW) {
-    if (lane_info->lane().left_neighbor_forward_lane_id_size() > 0) {
-      first_lane_id = lane_info->lane().left_neighbor_forward_lane_id(0);
-    } else if (lane_info->lane().left_neighbor_reverse_lane_id_size() > 0) {
-      first_lane_id = lane_info->lane().left_neighbor_reverse_lane_id(0);
-    } else {
-      return false;
+    has_first = reference_line_info_->GetNeighborLaneInfo(
+        ReferenceLineInfo::LaneType::LeftForward, check_s, &first_lane_id,
+        &lane_width);
+    if (!has_first) {
+      has_first = reference_line_info_->GetNeighborLaneInfo(
+          ReferenceLineInfo::LaneType::LeftReverse, check_s, &first_lane_id,
+          &lane_width);
     }
   } else {
-    if (lane_info->lane().right_neighbor_forward_lane_id_size() > 0) {
-      first_lane_id = lane_info->lane().right_neighbor_forward_lane_id(0);
-    } else if (lane_info->lane().right_neighbor_reverse_lane_id_size() > 0) {
-      first_lane_id = lane_info->lane().right_neighbor_reverse_lane_id(0);
-    } else {
-      return false;
+    has_first = reference_line_info_->GetNeighborLaneInfo(
+        ReferenceLineInfo::LaneType::RightForward, check_s, &first_lane_id,
+        &lane_width);
+    if (!has_first) {
+      has_first = reference_line_info_->GetNeighborLaneInfo(
+          ReferenceLineInfo::LaneType::RightReverse, check_s, &first_lane_id,
+          &lane_width);
     }
   }
-  auto first_lane_ptr = hdmap::HDMapUtil::BaseMapPtr()->GetLaneById(first_lane_id);
-  if (!first_lane_ptr) {
+  if (!has_first) {
     return false;
   }
-  if (pass_direction == SidePassDirection::LEFT_BORROW) {
-    return first_lane_ptr->lane().left_neighbor_forward_lane_id_size() > 0 ||
-           first_lane_ptr->lane().left_neighbor_reverse_lane_id_size() > 0;
-  }
-  return first_lane_ptr->lane().right_neighbor_forward_lane_id_size() > 0 ||
-         first_lane_ptr->lane().right_neighbor_reverse_lane_id_size() > 0;
+  bool is_reverse = false;
+  return GetSecondNeighborLaneInfo(first_lane_id, pass_direction, check_s,
+                                   &lane_width, &is_reverse);
 }
 
 bool LaneBorrowPath::GetSecondNeighborLaneInfo(
@@ -806,7 +804,8 @@ bool LaneBorrowPath::GetSecondNeighborLaneInfo(
   auto ref_point = reference_line_info_->reference_line().GetReferencePoint(s);
   double proj_s = 0.0;
   double proj_l = 0.0;
-  if (!second_ptr->GetProjection({ref_point.x(), ref_point.y()}, &proj_s, &proj_l)) {
+  if (!second_ptr->GetProjection({ref_point.x(), ref_point.y()}, &proj_s,
+                                 &proj_l)) {
     return false;
   }
   static constexpr double kProjectionEpsilon = 0.5;
