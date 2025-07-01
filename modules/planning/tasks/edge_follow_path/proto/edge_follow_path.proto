@@ -1,0 +1,13 @@
+syntax = "proto2";
+
+package apollo.planning;
+
+message EdgeFollowPathConfig {
+  // Resolution (m) used when sampling points along the reference line.
+  optional double path_resolution = 1 [default = 1.0];
+  // Buffer (m) between the vehicle's right side and the road edge.
+  optional double edge_buffer = 2 [default = 0.3];
+  // Initial distance (m) over which the vehicle shifts from its current
+  // lateral position to the right edge.
+  optional double initial_shift_length = 3 [default = 5.0];
+}
