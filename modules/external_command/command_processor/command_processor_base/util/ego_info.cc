@@ -15,16 +15,16 @@
  *****************************************************************************/
 
 /**
- * @file speed_limit.cc
+ * @file ego_info.cc
  **/
 
-#include "modules/planning/planning_base/common/ego_info.h"
+#include "modules/external_command/command_processor/command_processor_base/util/ego_info.h"
 
 #include "cyber/common/log.h"
 #include "modules/common/configs/vehicle_config_helper.h"
 
 namespace apollo {
-namespace planning {
+namespace external_command {
 
 using apollo::common::math::Box2d;
 using apollo::common::math::Vec2d;
@@ -115,5 +115,5 @@ void EgoInfo::CalculateCurrentRouteInfo(
 double EgoInfo::GetDistanceToDestination() const {
   return distance_to_destination_;
 }
-}  // namespace planning
+}  // namespace external_command
 }  // namespace apollo

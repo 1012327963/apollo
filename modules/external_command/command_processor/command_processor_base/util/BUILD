@@ -41,6 +41,34 @@ apollo_cc_library(
     ],
 )
 
+apollo_cc_library(
+    name = "loop_distance_tool",
+    srcs = ["loop_distance_tool.cc"],
+    hdrs = ["loop_distance_tool.h"],
+    copts = EXTERNAL_COMMAND_COPTS,
+    deps = [
+        "//cyber",
+        "//modules/common_msgs/external_command_msgs:external_geometry_cc_proto",
+        "//modules/common_msgs/routing_msgs:routing_cc_proto",
+        "//modules/routing",
+    ],
+)
+
+apollo_cc_library(
+    name = "ego_info",
+    srcs = ["ego_info.cc"],
+    hdrs = ["ego_info.h"],
+    copts = EXTERNAL_COMMAND_COPTS,
+    deps = [
+        "//cyber",
+        "//modules/common/configs:vehicle_config_helper",
+        "//modules/common/vehicle_state/proto:vehicle_state_cc_proto",
+        "//modules/common_msgs/config_msgs:vehicle_config_cc_proto",
+        "//modules/common_msgs/routing_msgs:routing_cc_proto",
+        "//modules/planning/planning_base:apollo_planning_planning_base",
+    ],
+)
+
 cpplint()
 
 apollo_package()
