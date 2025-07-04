@@ -33,7 +33,7 @@
 #include "modules/planning/planning_base/reference_line/reference_line_provider.h"
 
 namespace apollo {
-namespace planning {
+namespace external_command {
 
 class EgoInfo {
  public:
@@ -135,5 +135,5 @@ class EgoInfo {
   int remaining_loop_count_ = 0;
 };
 
-}  // namespace planning
+}  // namespace external_command
 }  // namespace apollo
