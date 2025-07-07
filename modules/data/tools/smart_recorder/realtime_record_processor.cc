@@ -17,6 +17,7 @@
 #include "modules/data/tools/smart_recorder/realtime_record_processor.h"
 
 #include <csignal>
+#include <sys/stat.h>
 
 #include <algorithm>
 #include <chrono>
@@ -211,7 +212,8 @@ void RealtimeRecordProcessor::ProcessRestoreRecord(
   std::vector<std::string> files =
       cyber::common::ListSubPaths(record_source_path, DT_REG);
   std::smatch result;
-  std::regex record_file_name_regex("[1-9][0-9]{13}\\.record\\.[0-9]{5}");
+  std::regex record_file_name_regex(
+      "[1-9][0-9]{13}\\.record\\.[0-9]{5}(\\.[0-9]{14})?");
   for (const auto& file : files) {
     if (std::regex_match(file, result, record_file_name_regex)) {
       if (std::find(record_files_.begin(), record_files_.end(), file) ==
@@ -223,13 +225,25 @@ void RealtimeRecordProcessor::ProcessRestoreRecord(
   // Sort the files in name order.
   std::sort(record_files_.begin(), record_files_.end(),
             [](const std::string& a, const std::string& b) { return a < b; });
-  // Delete the overdue files by num.
-  if (record_files_.size() > reused_record_num_) {
-    if (0 !=
-        std::remove((record_source_path + (*record_files_.begin())).c_str())) {
-      AWARN << "Failed to delete file: " << *record_files_.begin();
+  // Delete files that exceed count or time limits.
+  static constexpr double kMaxHistorySeconds = 7 * 60.0;
+  const double now = Time::Now().ToSecond();
+  while (!record_files_.empty()) {
+    const std::string& oldest = record_files_.front();
+    std::string path = record_source_path + oldest;
+    struct stat file_stat;
+    double age = 0.0;
+    if (stat(path.c_str(), &file_stat) == 0) {
+      age = now - static_cast<double>(file_stat.st_mtime);
     }
-    record_files_.erase(record_files_.begin());
+    if (record_files_.size() > reused_record_num_ || age > kMaxHistorySeconds) {
+      if (0 != std::remove(path.c_str())) {
+        AWARN << "Failed to delete file: " << oldest;
+      }
+      record_files_.erase(record_files_.begin());
+    } else {
+      break;
+    }
   }
 }
 
