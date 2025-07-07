@@ -53,7 +53,6 @@ class RealtimeRecordProcessor : public RecordProcessor {
   void PublishStatus(const RecordingState state,
                      const std::string& message) const;
   void ProcessRestoreRecord(const std::string& record_path);
-  double GetDuration(const std::string& record_file);
 
   std::shared_ptr<cyber::record::Recorder> recorder_ = nullptr;
   std::shared_ptr<cyber::Node> smart_recorder_node_ = nullptr;

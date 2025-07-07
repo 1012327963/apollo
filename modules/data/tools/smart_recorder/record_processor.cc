@@ -92,6 +92,7 @@ bool RecordProcessor::InitTriggers(const SmartRecordTrigger& trigger_conf) {
       return false;
     }
   }
+  AINFO << "total triggers initialized: " << triggers_.size();
   return true;
 }
 
