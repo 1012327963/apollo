@@ -28,6 +28,8 @@ bool TriggerBase::Init(const SmartRecordTrigger& trigger_conf) {
     AERROR << "failed to lock trigger " << GetTriggerName();
     return false;
   }
+  AINFO << "init trigger " << trigger_name_ << " enabled="
+        << (trigger_obj_->enabled() ? "true" : "false");
   return true;
 }
 
