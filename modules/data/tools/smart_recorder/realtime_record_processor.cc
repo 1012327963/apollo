@@ -17,6 +17,7 @@
 #include "modules/data/tools/smart_recorder/realtime_record_processor.h"
 
 #include <csignal>
+#include <sys/stat.h>
 
 #include <algorithm>
 #include <chrono>
@@ -64,12 +65,27 @@ std::string GetNextRecordFileName(const std::string& record_path) {
   if (record_path.empty()) {
     return kInitialSequence;
   }
+  std::string current_suffix;
+  const std::string key = ".record.";
+  auto pos = record_path.rfind(key);
+  if (pos != std::string::npos &&
+      pos + key.size() + kSuffixLen <= record_path.size()) {
+    current_suffix =
+        record_path.substr(pos + key.size(), kSuffixLen);
+  } else if (record_path.size() >= kSuffixLen) {
+    current_suffix =
+        record_path.substr(record_path.size() - kSuffixLen, kSuffixLen);
+  }
+
+  int suffix_num = 0;
+  if (!current_suffix.empty()) {
+    suffix_num = std::stoi(current_suffix);
+  }
+
   std::stringstream record_suffix;
   record_suffix.fill('0');
   record_suffix.width(kSuffixLen);
-  record_suffix << std::stoi(record_path.substr(record_path.size() - kSuffixLen,
-                                                kSuffixLen)) +
-                       1;
+  record_suffix << (suffix_num + 1);
   return record_suffix.str();
 }
 
@@ -196,7 +212,8 @@ void RealtimeRecordProcessor::ProcessRestoreRecord(
   std::vector<std::string> files =
       cyber::common::ListSubPaths(record_source_path, DT_REG);
   std::smatch result;
-  std::regex record_file_name_regex("[1-9][0-9]{13}\\.record\\.[0-9]{5}");
+  std::regex record_file_name_regex(
+      "[1-9][0-9]{13}\\.record\\.[0-9]{5}(\\.[0-9]{14})?");
   for (const auto& file : files) {
     if (std::regex_match(file, result, record_file_name_regex)) {
       if (std::find(record_files_.begin(), record_files_.end(), file) ==
@@ -208,13 +225,25 @@ void RealtimeRecordProcessor::ProcessRestoreRecord(
   // Sort the files in name order.
   std::sort(record_files_.begin(), record_files_.end(),
             [](const std::string& a, const std::string& b) { return a < b; });
-  // Delete the overdue files by num.
-  if (record_files_.size() > reused_record_num_) {
-    if (0 !=
-        std::remove((record_source_path + (*record_files_.begin())).c_str())) {
-      AWARN << "Failed to delete file: " << *record_files_.begin();
+  // Delete files that exceed count or time limits.
+  static constexpr double kMaxHistorySeconds = 7 * 60.0;
+  const double now = Time::Now().ToSecond();
+  while (!record_files_.empty()) {
+    const std::string& oldest = record_files_.front();
+    std::string path = record_source_path + oldest;
+    struct stat file_stat;
+    double age = 0.0;
+    if (stat(path.c_str(), &file_stat) == 0) {
+      age = now - static_cast<double>(file_stat.st_mtime);
     }
-    record_files_.erase(record_files_.begin());
+    if (record_files_.size() > reused_record_num_ || age > kMaxHistorySeconds) {
+      if (0 != std::remove(path.c_str())) {
+        AWARN << "Failed to delete file: " << oldest;
+      }
+      record_files_.erase(record_files_.begin());
+    } else {
+      break;
+    }
   }
 }
 
@@ -256,13 +285,25 @@ void RealtimeRecordProcessor::PublishStatus(const RecordingState state,
 
 bool RealtimeRecordProcessor::GetNextValidRecord(
     std::string* record_path) const {
-  *record_path = absl::StrCat(source_record_dir_, "/", default_output_filename_,
-                              ".", GetNextRecordFileName(*record_path));
-  while (!is_terminating_ && !IsRecordValid(*record_path)) {
+  const std::string next_index = GetNextRecordFileName(*record_path);
+  const std::string prefix =
+      absl::StrCat(default_output_filename_, ".", next_index, ".");
+  while (!is_terminating_) {
+    const auto files = cyber::common::ListSubPaths(source_record_dir_, DT_REG);
+    for (const auto& file : files) {
+      if (file.rfind(prefix, 0) == 0) {
+        std::string candidate =
+            absl::StrCat(source_record_dir_, "/", file);
+        if (IsRecordValid(candidate)) {
+          *record_path = candidate;
+          return true;
+        }
+      }
+    }
     AINFO << "next record unavailable, wait " << recorder_wait_time_ << " ms";
     std::this_thread::sleep_for(std::chrono::milliseconds(recorder_wait_time_));
   }
-  return IsRecordValid(*record_path);
+  return false;
 }
 
 void RealtimeRecordProcessor::RestoreMessage(const uint64_t message_time) {
