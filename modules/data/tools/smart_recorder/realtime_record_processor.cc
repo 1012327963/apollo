@@ -228,8 +228,14 @@ void RealtimeRecordProcessor::ProcessRestoreRecord(
   // Delete files that exceed count or time limits.
   static constexpr double kMaxHistorySeconds = 7 * 60.0;
   const double now = Time::Now().ToSecond();
+  const std::string current_file = restore_path_.empty()
+                                     ? ""
+                                     : cyber::common::GetFileName(restore_path_);
   while (!record_files_.empty()) {
     const std::string& oldest = record_files_.front();
+    if (!current_file.empty() && !(oldest < current_file)) {
+      break;
+    }
     std::string path = record_source_path + oldest;
     struct stat file_stat;
     double age = 0.0;
