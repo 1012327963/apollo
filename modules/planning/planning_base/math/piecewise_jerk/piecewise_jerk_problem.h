@@ -120,7 +120,8 @@ class PiecewiseJerkProblem {
   void set_end_state_ref(const std::array<double, 3>& weight_end_state,
                          const std::array<double, 3>& end_state_ref);
 
-  virtual bool Optimize(const int max_iter = 4000);
+  virtual bool Optimize(const int max_iter = 4000,
+                        const std::vector<double>* warm_start = nullptr);
 
   const std::vector<double>& opt_x() const { return x_; }
 
