@@ -87,7 +87,8 @@ bool PiecewiseJerkProblem::FormulateProblem(OSQPData* data) {
   return CheckLowUpperBound(lower_bounds, upper_bounds);
 }
 
-bool PiecewiseJerkProblem::Optimize(const int max_iter) {
+bool PiecewiseJerkProblem::Optimize(const int max_iter,
+                                    const std::vector<double>* warm_start) {
   OSQPData* data = reinterpret_cast<OSQPData*>(c_malloc(sizeof(OSQPData)));
   if (FormulateProblem(data)) {
     FreeData(data);
@@ -97,6 +98,10 @@ bool PiecewiseJerkProblem::Optimize(const int max_iter) {
   settings->max_iter = max_iter;
   OSQPWorkspace* osqp_work = nullptr;
   osqp_work = osqp_setup(data, settings);
+  if (warm_start && warm_start->size() == 3 * num_of_knots_) {
+    std::vector<c_float> warm_start_f(warm_start->begin(), warm_start->end());
+    osqp_warm_start_x(osqp_work, warm_start_f.data());
+  }
   // osqp_setup(&osqp_work, data, settings);
   osqp_solve(osqp_work);
   auto status = osqp_work->info->status_val;

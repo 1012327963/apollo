@@ -81,7 +81,8 @@ Status PiecewiseJerkSpeedOptimizer::Process(const PathData& path_data,
     AINFO << "transfer reverse speed" << init_s[0] << "," << init_s[1] << ","
           << init_s[2];
   }
-  double delta_t = 0.1;
+  // Use a larger time step to reduce optimization size
+  double delta_t = 0.2;
   double total_length = st_graph_data.path_length();
   double total_time = st_graph_data.total_time_by_conf();
   int num_of_knots = static_cast<int>(total_time / delta_t) + 1;
@@ -185,15 +186,18 @@ Status PiecewiseJerkSpeedOptimizer::Process(const PathData& path_data,
   piecewise_jerk_problem.set_penalty_dx(penalty_dx);
   piecewise_jerk_problem.set_dx_bounds(std::move(s_dot_bounds));
 
-  // Solve the problem
-  if (!piecewise_jerk_problem.Optimize()) {
+  // Solve the problem with warm start when available
+  // Limit solver iteration to speed up the optimization
+  const std::vector<double>* warm_start_ptr =
+      warm_start_.size() == 3 * num_of_knots ? &warm_start_ : nullptr;
+  if (!piecewise_jerk_problem.Optimize(1000, warm_start_ptr)) {
     const std::string msg = "Piecewise jerk speed optimizer failed!";
     AERROR << msg << ".try to fallback.";
     piecewise_jerk_problem.set_dx_bounds(
         0.0, std::fmax(FLAGS_planning_upper_speed_limit,
                        st_graph_data.init_point().v()));
     if (!FLAGS_speed_optimize_fail_relax_velocity_constraint ||
-        !piecewise_jerk_problem.Optimize()) {
+        !piecewise_jerk_problem.Optimize(1000, warm_start_ptr)) {
       speed_data->clear();
       print_debug.AddPoint("optimize_st_curve", 0, init_s[0]);
       print_debug.AddPoint("optimize_vt_curve", 0, init_s[1]);
@@ -229,6 +233,11 @@ Status PiecewiseJerkSpeedOptimizer::Process(const PathData& path_data,
                                  (dds[i] - dds[i - 1]) / delta_t);
   }
   SpeedProfileGenerator::FillEnoughSpeedPoints(speed_data);
+  // Save result for warm start next cycle
+  warm_start_.clear();
+  warm_start_.insert(warm_start_.end(), s.begin(), s.end());
+  warm_start_.insert(warm_start_.end(), ds.begin(), ds.end());
+  warm_start_.insert(warm_start_.end(), dds.begin(), dds.end());
   RecordDebugInfo(*speed_data, st_graph_data.mutable_st_graph_debug());
   print_debug.PrintToLog();
   return Status::OK();
