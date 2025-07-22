@@ -17,6 +17,7 @@
 #include "cyber/tools/cyber_recorder/recorder.h"
 
 #include <algorithm>
+#include <chrono>
 
 #include "cyber/record/header_builder.h"
 
@@ -110,6 +111,7 @@ bool Recorder::Stop() {
     return false;
   }
   is_stopping_ = true;
+  progress_cv_.notify_all();
   if (!FreeReadersImpl()) {
     AERROR << " _free_readers error.";
     return false;
@@ -276,17 +278,34 @@ void Recorder::ReaderCallback(const std::shared_ptr<RawMessage>& message,
     return;
   }
 
-  message_count_++;
+  message_count_.fetch_add(1, std::memory_order_relaxed);
+  progress_cv_.notify_one();
 }
 
 void Recorder::ShowProgress() {
+  uint64_t last_count = 0;
+  auto last_print = std::chrono::steady_clock::now();
   while (is_started_ && !is_stopping_) {
-    std::cout << "\r[RUNNING]  Record Time: " << std::setprecision(3)
-              << message_time_ / 1000000000
-              << "    Progress: " << channel_reader_map_.size() << " channels, "
-              << message_count_ << " messages";
-    std::cout.flush();
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::unique_lock<std::mutex> lk(progress_mutex_);
+    progress_cv_.wait_for(
+        lk, std::chrono::seconds(1), [this, &last_count, &last_print] {
+          return message_count_.load(std::memory_order_relaxed) != last_count ||
+                 std::chrono::steady_clock::now() - last_print >=
+                     std::chrono::seconds(1) ||
+                 is_stopping_;
+        });
+    auto now = std::chrono::steady_clock::now();
+    auto current_count = message_count_.load(std::memory_order_relaxed);
+    if (current_count != last_count ||
+        now - last_print >= std::chrono::seconds(1)) {
+      std::cout << "\r[RUNNING]  Record Time: " << std::setprecision(3)
+                << message_time_ / 1000000000
+                << "    Progress: " << channel_reader_map_.size()
+                << " channels, " << current_count << " messages";
+      std::cout.flush();
+      last_count = current_count;
+      last_print = now;
+    }
   }
   std::cout << std::endl;
 }

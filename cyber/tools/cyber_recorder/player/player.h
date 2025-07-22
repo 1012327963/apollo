@@ -90,6 +90,7 @@ class Player {
   std::shared_ptr<std::thread> term_thread_ = nullptr;
   // add nohup_play_th_ to allow background play record
   std::shared_ptr<std::thread> nohup_play_th_ = nullptr;
+  // Sleep interval for internal status loops in milliseconds.
   static const uint64_t kSleepIntervalMiliSec;
 };
 

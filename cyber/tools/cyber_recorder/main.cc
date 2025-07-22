@@ -516,9 +516,7 @@ int main(int argc, char** argv) {
     }
     bool record_result = recorder->Start();
     if (record_result) {
-      while (!::apollo::cyber::IsShutdown()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      }
+      apollo::cyber::WaitForShutdown();
       record_result = recorder->Stop();
     }
     return record_result ? 0 : -1;
