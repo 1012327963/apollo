@@ -27,6 +27,7 @@
 #include "modules/data/tools/smart_recorder/regular_interval_trigger.h"
 #include "modules/data/tools/smart_recorder/small_topics_trigger.h"
 #include "modules/data/tools/smart_recorder/swerve_trigger.h"
+#include "modules/data/tools/smart_recorder/stop_manual_trigger.h"
 
 namespace apollo {
 namespace data {
@@ -83,6 +84,7 @@ bool RecordProcessor::InitTriggers(const SmartRecordTrigger& trigger_conf) {
   triggers_.push_back(std::unique_ptr<TriggerBase>(new SmallTopicsTrigger));
   triggers_.push_back(std::unique_ptr<TriggerBase>(new RegularIntervalTrigger));
   triggers_.push_back(std::unique_ptr<TriggerBase>(new SwerveTrigger));
+  triggers_.push_back(std::unique_ptr<TriggerBase>(new StopManualTrigger));
   triggers_.push_back(std::unique_ptr<TriggerBase>(new BumperCrashTrigger));
   for (const auto& trigger : triggers_) {
     if (!trigger->Init(trigger_conf)) {

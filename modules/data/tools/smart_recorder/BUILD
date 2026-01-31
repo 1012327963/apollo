@@ -23,6 +23,7 @@ apollo_cc_library(
         "realtime_record_processor.cc",
         "record_processor.cc",
         "regular_interval_trigger.cc",
+        "stop_manual_trigger.cc",
         "small_topics_trigger.cc",
         "smart_recorder_gflags.cc",
         "swerve_trigger.cc",
@@ -42,6 +43,7 @@ apollo_cc_library(
         "small_topics_trigger.h",
         "smart_recorder_gflags.h",
         "swerve_trigger.h",
+        "stop_manual_trigger.h",
         "trigger_base.h",
     ],
     deps = [

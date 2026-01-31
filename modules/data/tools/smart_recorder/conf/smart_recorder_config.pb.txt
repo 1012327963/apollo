@@ -62,3 +62,11 @@ triggers {
   forward_time: 30.0
   description: "triggered when bumper was pressed by car crashed happened"
 }
+
+triggers {
+  trigger_name: "StopManualTrigger"
+  enabled: true
+  backward_time: 45.0
+  forward_time: 0.0
+  description: "triggered when stop for 5s or switch to manual mode"
+}
