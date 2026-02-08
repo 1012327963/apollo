@@ -43,6 +43,10 @@ scenario {
     type: "ParkAndGoScenario"
 }
 scenario {
+    name: "EDGE_FOLLOW"
+    type: "EdgeFollowScenario"
+}
+scenario {
     name: "LANE_FOLLOW"
     type: "LaneFollowScenario"
 }

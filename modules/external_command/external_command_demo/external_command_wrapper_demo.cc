@@ -160,6 +160,14 @@ bool ExternalCommandWrapperDemo::Proc() {
       } else if (input_command_string == "valet_parking") {
         std::string parking_spot_id = "451089045";
         SendValetParkingCommand(parking_spot_id, demo_config_.target_speed());
+      } else if (input_command_string == "edge_start") {
+        // Start edge follow mission.
+        SendActionCommand(
+            apollo::external_command::ActionCommandType::ENTER_MISSION);
+      } else if (input_command_string == "edge_stop") {
+        // Stop edge follow mission.
+        SendActionCommand(
+            apollo::external_command::ActionCommandType::EXIT_MISSION);
       } else if (input_command_string.find("command_status") !=
                  std::string::npos) {
         // Input command with format: command_status=XX, where XX is the
